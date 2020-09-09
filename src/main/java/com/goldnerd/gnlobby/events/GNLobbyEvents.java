@@ -2,6 +2,7 @@ package com.goldnerd.gnlobby.events;
 
 import com.goldnerd.gnlobby.GNLobby;
 import com.goldnerd.gnlobby.entities.GNLobbyVillager;
+import com.goldnerd.gnlobby.inventories.GNLobbyChestInv;
 import com.goldnerd.gnlobby.inventories.GNLobbyInvJuanes;
 import com.goldnerd.gnlobby.inventories.GNLobbyInvNav;
 import com.goldnerd.gnlobby.items.GNLobbyItems;
@@ -19,6 +20,7 @@ import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
@@ -32,19 +34,37 @@ import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 
 public class GNLobbyEvents implements Listener {
     private static boolean hidden;
+    static Firestore db = FirestoreClient.getFirestore();
+    static GNLobbyChestInv theChest = new GNLobbyChestInv();
 
     @EventHandler
-    public static void onPlayerJoin(PlayerJoinEvent event){
+    public static void onPlayerJoin(PlayerJoinEvent event) throws ExecutionException, InterruptedException {
         Player player = event.getPlayer();
         player.sendMessage(ChatColor.YELLOW + "Willkommen auf GoldNerd.de " + player.getName()+ " !");
         player.getInventory().setItem(0, GNLobbyItems.nav);
         player.getInventory().setItem(1, GNLobbyItems.hider);
+        player.getInventory().setItem(2, GNLobbyItems.chest);
+
+        //Nach Item suchen
+        DocumentReference docRef = db.collection("users").document(player.getUniqueId().toString());
+        ApiFuture<DocumentSnapshot> receive = docRef.get();
+        DocumentSnapshot document = receive.get();
+        if(document.exists()){
+            ArrayList<String> items = (ArrayList<String>) document.get("items");
+            int i = 1;
+            for(String item: items){
+                theChest.getInventory().setItem(i, new ItemStack(Material.valueOf(item)));
+                i++;
+            }
+        } else {
+            //hat kein Dokument
+        }
+
     }
 
     @EventHandler
@@ -82,6 +102,18 @@ public class GNLobbyEvents implements Listener {
                         hidden = true;
                         event.getPlayer().sendMessage(ChatColor.YELLOW + "Alle Spieler werden versteckt");
                     }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public static void onChestClick(PlayerInteractEvent event){
+        Player player = event.getPlayer();
+        if(event.getAction()== Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK){
+            if(event.getItem()!=null){
+                if(event.getItem().getItemMeta().equals(GNLobbyItems.chest.getItemMeta())){
+                    player.openInventory(theChest.getInventory());
                 }
             }
         }
@@ -133,6 +165,31 @@ public class GNLobbyEvents implements Listener {
     }
 
     @EventHandler
+    public static void onChestInvClick(InventoryClickEvent event) {
+        if (event.getInventory() == null || event.getCurrentItem() == null) {
+            return;
+        }
+        if (event.getInventory().getHolder() instanceof GNLobbyChestInv) {
+            event.setCancelled(true);
+            Player player = (Player) event.getWhoClicked();
+
+            if (event.isLeftClick()) {
+                if (event.getCurrentItem() == null) {
+                    return;
+                }
+                if (event.getCurrentItem().getType() == Material.BLACK_WOOL) {
+                    player.sendMessage("Schwarze Wolle angeklickt");
+                    player.getInventory().setHelmet(new ItemStack(Material.BLACK_WOOL));
+                }
+                if (event.getCurrentItem().getType() == Material.CREEPER_HEAD) {
+                    player.sendMessage("Hut entfernt");
+                    player.getInventory().setHelmet(new ItemStack(Material.AIR));
+                }
+            }
+        }
+    }
+
+    @EventHandler
     public void handleShopInteract(PlayerInteractEntityEvent event){
         if(!(event.getRightClicked() instanceof Villager && event.getRightClicked().getCustomName() != null)){
             return;
@@ -162,11 +219,11 @@ public class GNLobbyEvents implements Listener {
                 if (event.getCurrentItem() == null) {
                     return;
                 }
+                DocumentReference docRef = db.collection("users").document(player.getUniqueId().toString());
+                ApiFuture<DocumentSnapshot> receive = docRef.get();
+                DocumentSnapshot document = receive.get();
+
                 if (event.getCurrentItem().getType() == Material.BLACK_WOOL) {
-                    Firestore db = FirestoreClient.getFirestore();
-                    DocumentReference docRef = db.collection("users").document(player.getDisplayName());
-                    ApiFuture<DocumentSnapshot> receive = docRef.get();
-                    DocumentSnapshot document = receive.get();
                     if (document.exists()) {
                         ArrayList<String> items = (ArrayList<String>) document.get("items");
                         if(items.contains("BLACK_WOOL")){
@@ -175,11 +232,11 @@ public class GNLobbyEvents implements Listener {
                         } else {
                             //Hat Eintrag aber dieses Item nicht
                             HashMap postsMap = new HashMap();
-                            postsMap.put("userName", player.getDisplayName());
+                            postsMap.put("userName", ChatColor.stripColor(player.getDisplayName()));
                             postsMap.put("userUUID", player.getUniqueId().toString());
                             postsMap.put("items",  Arrays.asList("BLACK_WOOL"));
                             postsMap.put("balance", GNLobby.eco.getBalance(player)-100);
-                            ApiFuture<WriteResult> write = db.collection("users").document(player.getDisplayName()).set(postsMap);
+                            ApiFuture<WriteResult> write = db.collection("users").document(player.getUniqueId().toString()).set(postsMap);
                             player.sendMessage("Du hast 100Yen gezahlt");
                             GNLobby.eco.withdrawPlayer(player, 100);
                             player.getInventory().setItem(2, new ItemStack(Material.BLACK_WOOL));
@@ -187,11 +244,11 @@ public class GNLobbyEvents implements Listener {
                     } else {
                         //Hat keinen Eintrag also kann es gar nicht haben
                         HashMap postsMap = new HashMap();
-                        postsMap.put("userName", player.getDisplayName());
+                        postsMap.put("userName", ChatColor.stripColor(player.getDisplayName()));
                         postsMap.put("userUUID", player.getUniqueId().toString());
                         postsMap.put("items",  Arrays.asList("BLACK_WOOL"));
                         postsMap.put("balance", GNLobby.eco.getBalance(player)-100);
-                        ApiFuture<WriteResult> write = db.collection("users").document(player.getDisplayName()).set(postsMap);
+                        ApiFuture<WriteResult> write = db.collection("users").document(player.getUniqueId().toString()).set(postsMap);
                         player.sendMessage("Du hast 100Yen gezahlt");
                         GNLobby.eco.withdrawPlayer(player, 100);
                         player.getInventory().setItem(2, new ItemStack(Material.BLACK_WOOL));
@@ -206,7 +263,7 @@ public class GNLobbyEvents implements Listener {
     public void onDrop(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
         ItemStack drop = event.getItemDrop().getItemStack();
-        if (drop != null && (drop.getType() == Material.COMPASS||drop.getType() == Material.GOLD_INGOT)) {
+        if (drop != null && (drop.getType() == Material.COMPASS||drop.getType() == Material.GOLD_INGOT||drop.getType() == Material.CHEST)) {
             event.setCancelled(true);
         }
     }
@@ -215,9 +272,38 @@ public class GNLobbyEvents implements Listener {
     public void LockInv(InventoryClickEvent e) {
         ItemStack clicked = e.getCurrentItem();
         Player p = (Player) e.getWhoClicked();
-        if(clicked != null && (clicked.getType() == Material.COMPASS||clicked.getType() == Material.GOLD_INGOT)) {
+        if(clicked != null && (clicked.getType() == Material.COMPASS||clicked.getType() == Material.GOLD_INGOT
+                ||clicked.getType() == Material.CHEST||clicked.getType() == Material.BLACK_WOOL)) {
             e.setCancelled(true);
             return;
         }
     }
+
+    @EventHandler
+    public static void onChestPlace(BlockPlaceEvent event){
+        if(event.getBlockPlaced().getType() == Material.CHEST){
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void ChestInvLock(InventoryClickEvent e) {
+        ItemStack clicked = e.getCurrentItem();
+        Player p = (Player) e.getWhoClicked();
+        Inventory chest = e.getInventory();
+        if(clicked != null && chest instanceof GNLobbyChestInv) {
+                e.setCancelled(true);
+                return;
+        }
+    }
+
+    @EventHandler
+    public void onChestInvDrop(PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+        ItemStack drop = event.getItemDrop().getItemStack();
+        if (drop != null && (drop.getType() == Material.CREEPER_HEAD)) {
+            event.setCancelled(true);
+        }
+    }
+
 }

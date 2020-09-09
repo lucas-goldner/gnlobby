@@ -9,17 +9,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GNLobbyItems {
-    public static ItemStack nav, hider;
+    public static ItemStack nav, hider, chest;
 
     public  static void init(){
         createNav();
         createHider();
+        createChest();
     }
 
     private static void createHider() {
         ItemStack item2 = new ItemStack(Material.GOLD_INGOT, 1);
         ItemMeta meta2 = item2.getItemMeta();
-        meta2.setDisplayName(ChatColor.LIGHT_PURPLE+"Verstecke Spieler");
+        meta2.setDisplayName(ChatColor.LIGHT_PURPLE+"Verstecke Spieler"+ChatColor.GRAY+"(Rechtsklick)");
         List<String> lore2 = new ArrayList<>();
         lore2.add("Ein äußerst spezieller");
         lore2.add("Goldbatzen auf den man oft");
@@ -40,5 +41,17 @@ public class GNLobbyItems {
         meta.setLore(lore);
         item.setItemMeta(meta);
         nav = item;
+    }
+
+    private static void createChest() {
+        ItemStack item = new ItemStack(Material.CHEST,1);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(ChatColor.LIGHT_PURPLE+"Inventar"+ChatColor.GRAY+"(Rechtsklick)");
+        List<String> lore = new ArrayList<>();
+        lore.add("Eine dubiose Kiste");
+        lore.add("mit deinen erworbenen Items.");
+        meta.setLore(lore);
+        item.setItemMeta(meta);
+        chest = item;
     }
 }
