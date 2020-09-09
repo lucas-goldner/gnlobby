@@ -14,6 +14,8 @@ jobs:
           java-version: 14
       - name: Build with Maven
         run: mvn -B package --file pom.xml
+      - name: Create staging directory
+        run: mkdir -p staging
       - run: cp target/*.jar staging
       - uses: actions/upload-artifact@v1
         with:
