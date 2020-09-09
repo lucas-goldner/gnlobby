@@ -29,15 +29,6 @@ public class GNLobbyInvNav implements InventoryHolder {
         navInv.setItem(13, hubItem);
     }
 
-    private ItemStack createItem(String name, Material mat, List<String> lore){
-        ItemStack item = new ItemStack(mat, 1);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(name);
-        meta.setLore(lore);
-        item.setItemMeta(meta);
-        return item;
-    }
-
     @Override
     public Inventory getInventory() {
         return navInv;

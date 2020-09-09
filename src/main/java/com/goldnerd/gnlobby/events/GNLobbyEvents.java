@@ -2,13 +2,18 @@ package com.goldnerd.gnlobby.events;
 
 import com.goldnerd.gnlobby.GNLobby;
 import com.goldnerd.gnlobby.entities.GNLobbyVillager;
+import com.goldnerd.gnlobby.inventories.GNLobbyInvJuanes;
 import com.goldnerd.gnlobby.inventories.GNLobbyInvNav;
 import com.goldnerd.gnlobby.items.GNLobbyItems;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.*;
+import com.google.firebase.cloud.FirestoreClient;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.data.type.Fire;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Villager;
 import org.bukkit.event.EventHandler;
@@ -24,7 +29,11 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 
 public class GNLobbyEvents implements Listener {
@@ -132,7 +141,62 @@ public class GNLobbyEvents implements Listener {
             if(shop.getCustomName().equals(ChatColor.GOLD+"Hermano de Juanes")){
                 event.setCancelled(true);
                 Player player = event.getPlayer();
-                player.sendMessage("Shop wird geöffnet.");
+                player.sendMessage(ChatColor.GOLD+"Hermano de Juanes: "+ChatColor.GRAY+"Buenos dias.¿Quieres comprar algo?");
+                GNLobbyInvJuanes juanes = new GNLobbyInvJuanes();
+                player.openInventory(juanes.getInventory());
+            }
+        }
+    }
+
+    //ShopItems
+    @EventHandler
+    public void BuyItem1(InventoryClickEvent event) throws ExecutionException, InterruptedException {
+        if (event.getInventory() == null || event.getCurrentItem() == null) {
+            return;
+        }
+        if (event.getInventory().getHolder() instanceof GNLobbyInvJuanes) {
+            event.setCancelled(true);
+            Player player = (Player) event.getWhoClicked();
+
+            if (event.isLeftClick()) {
+                if (event.getCurrentItem() == null) {
+                    return;
+                }
+                if (event.getCurrentItem().getType() == Material.BLACK_WOOL) {
+                    Firestore db = FirestoreClient.getFirestore();
+                    DocumentReference docRef = db.collection("users").document(player.getDisplayName());
+                    ApiFuture<DocumentSnapshot> receive = docRef.get();
+                    DocumentSnapshot document = receive.get();
+                    if (document.exists()) {
+                        ArrayList<String> items = (ArrayList<String>) document.get("items");
+                        if(items.contains("BLACK_WOOL")){
+                            //Hat einen Eintrag und es gekauft
+                            player.sendMessage(ChatColor.GOLD+"Hermano de Juanes: "+ChatColor.GRAY+"Hahaha ya has comprado el item.¡Mira en tú inventario!");
+                        } else {
+                            //Hat Eintrag aber dieses Item nicht
+                            HashMap postsMap = new HashMap();
+                            postsMap.put("userName", player.getDisplayName());
+                            postsMap.put("userUUID", player.getUniqueId().toString());
+                            postsMap.put("items",  Arrays.asList("BLACK_WOOL"));
+                            postsMap.put("balance", GNLobby.eco.getBalance(player)-100);
+                            ApiFuture<WriteResult> write = db.collection("users").document(player.getDisplayName()).set(postsMap);
+                            player.sendMessage("Du hast 100Yen gezahlt");
+                            GNLobby.eco.withdrawPlayer(player, 100);
+                            player.getInventory().setItem(2, new ItemStack(Material.BLACK_WOOL));
+                        }
+                    } else {
+                        //Hat keinen Eintrag also kann es gar nicht haben
+                        HashMap postsMap = new HashMap();
+                        postsMap.put("userName", player.getDisplayName());
+                        postsMap.put("userUUID", player.getUniqueId().toString());
+                        postsMap.put("items",  Arrays.asList("BLACK_WOOL"));
+                        postsMap.put("balance", GNLobby.eco.getBalance(player)-100);
+                        ApiFuture<WriteResult> write = db.collection("users").document(player.getDisplayName()).set(postsMap);
+                        player.sendMessage("Du hast 100Yen gezahlt");
+                        GNLobby.eco.withdrawPlayer(player, 100);
+                        player.getInventory().setItem(2, new ItemStack(Material.BLACK_WOOL));
+                    }
+                }
             }
         }
     }

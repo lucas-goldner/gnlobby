@@ -12,3 +12,4 @@ permissions:
   GNLobby.juanes:
     description: Lets a player spawn Hermano de Juanes
     default: op
+depend: [Vault]
