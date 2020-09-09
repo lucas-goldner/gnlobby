@@ -4,6 +4,7 @@ import com.goldnerd.gnlobby.GNLobby;
 import com.goldnerd.gnlobby.entities.GNLobbyVillager;
 import com.goldnerd.gnlobby.inventories.GNLobbyInvNav;
 import com.goldnerd.gnlobby.items.GNLobbyItems;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
