@@ -1,0 +1,14 @@
+name: GNLobby
+version: 0.1
+author: GoldNerd
+main: com.goldnerd.gnlobby.GNLobby
+api-version: 1.14
+commands:
+  juanes:
+    description: Spawns Hermano de Juanes
+    usage: /<command>
+    aliases: [hermano, juanesshop, hermanoshop]
+permissions:
+  GNLobby.juanes:
+    description: Lets a player spawn Hermano de Juanes
+    default: op
